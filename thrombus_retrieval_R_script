@@ -1,0 +1,592 @@
+####__________ILIOFEMORAL DVT META-ANALYSIS__________####
+
+require(pacman)  # Gives a confirmation message.
+pacman::p_load(pacman, dplyr, GGally, ggplot2, psych, ggthemes, ggpubr, ggvis, 
+               httr, lubridate, plotly, rio, tidyverse,
+               stringr, tidyr, meta, metafor, weightr, broom, knitr)
+```
+```{r Reading in data}
+
+dat_int <- import("~/Desktop/baseline_characteristics_v7.csv")
+```
+
+#______________________HEAD-TO-HEAD META-ANALYSIS OF RCTS_________________
+  
+m.bin_PTS <- metabin(PTS_int,n_int,PTS_control,n_control,
+                 data = dat_RCT,
+                 studlab=paste(studlab, year, sep=", "),
+                 comb.fixed = T,
+                 method = 'MH',sm = "OR")
+
+forest(m.bin_PTS,
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+m.bin_PTS <- metabin(PTS_int,n_int,PTS_control,n_control,
+                     data = dat_RCT,
+                     studlab=paste(studlab, year, sep=", "),
+                     comb.fixed = T,
+                     method = 'MH',sm = "RD")
+
+forest(m.bin_PTS,
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+ies.RCT.PTS=escalc(xi=PTS_int,ni=n_int,measure="PR",data=dat_RCT) 
+pes.RCT.PTS=rma(yi,vi,data=ies.RCT.PTS,method="DL",weighted=TRUE)
+print(pes.PTS.6,digits=6);confint(pes.PTS.6)
+
+m_reg_RCT=rma(yi,vi,data=ies.RCT.PTS,mods=~PTS_fu_length+n_int,method="DL")
+m_reg_RCT
+m_reg_RCT$b[1]
+m_reg_RCT$b[2]
+
+ies.RCT.PTS.control=escalc(xi=PTS_control,ni=n_control,measure="PR",data=dat_RCT) 
+pes.RCT.PTS.control=rma(yi,vi,data=ies.RCT.PTS.control,method="DL",weighted=TRUE)
+print(pes.RCT.PTS.control,digits=6);confint(pes.RCT.PTS.control)
+
+m_reg_RCT_control=rma(yi,vi,data=ies.RCT.PTS.control,mods=~PTS_fu_length+n_control,method="DL")
+m_reg_RCT_control
+m_reg_RCT_control$b[1]
+m_reg_RCT_control$b[2]
+
+m.bin_PTS_modsev <- metabin(PTS_modsev_int,n_int,PTS_modsev_control,n_control,
+                     data = dat_RCT,
+                     studlab=paste(studlab, year, sep=", "),
+                     comb.fixed = T,
+                     method = 'MH',sm = "OR")
+
+forest(m.bin_PTS_modsev,
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+m.bin_PTS_modsev <- metabin(PTS_modsev_int,n_int,PTS_modsev_control,n_control,
+                            data = dat_RCT,
+                            studlab=paste(studlab, year, sep=", "),
+                            comb.fixed = T,
+                            method = 'MH',sm = "RD")
+
+forest(m.bin_PTS_modsev,
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+m.bin_maj_bleed <- metabin(bleeding_maj_int,n_int,bleeding_maj_control,n_control,
+                                    data = dat_RCT,
+                                    studlab=paste(studlab, year, sep=", "),
+                                    comb.fixed = T,comb.random = T,
+                                    method = 'MH',sm = "OR")
+forest(m.bin_maj_bleed,
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+m.bin_maj_bleed <- metabin(bleeding_maj_int,n_int,bleeding_maj_control,n_control,
+                           data = dat_RCT,
+                           studlab=paste(studlab, year, sep=", "),
+                           comb.fixed = T,comb.random = T,
+                           method = 'MH',sm = "RD")
+forest(m.bin_maj_bleed,
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+###_________Pooled PTS rates in intervention____________
+
+ies.PTS=escalc(xi=PTS_int,ni=n_int,measure="PLO",data=dat_int) 
+pes.PTS=rma(yi,vi,data=ies.PTS,method="DL",weighted=TRUE)
+print(pes.PTS,digits=6);confint(pes.PTS)
+
+m.reg.PTS.int=rma(yi,vi,data=ies.PTS,mods=~PTS_fu_length,method="DL")
+m.reg.PTS.int
+
+m.reg.PTS.int$b[1] #intercept
+m.reg.PTS.int$b[2] #slope
+
+dat.PTS.time <- import("~/Desktop/PTS_by_Time.csv")
+
+ggplot() +
+  geom_point(data=dat.PTS.time, aes(x = Time_int, y = PTS_rate), colour="red")+
+  geom_point(data=dat.PTS.time, aes(x=Time_cont, y=PTS_rate_cont), colour="blue") +
+  geom_smooth(data=dat.PTS.time, aes(x = Time_int, y = PTS_rate), 
+              method = "lm", se = T,colour="red") +
+  geom_smooth(data=dat.PTS.time, aes(x=Time_cont, y=PTS_rate_cont),
+              method="lm", se = T,colour="blue") + 
+  labs(y= "Rate of Post-Thrombotic Syndrome (%)", x = "Time (Months)")
+
+lm.time.int = lm(PTS_rate~Time_int, data = dat.PTS.time) #Create the linear regression
+summary(lm.time.int)
+
+lm.time.cont = lm(PTS_rate_cont~Time_cont, data = dat.PTS.time) #Create the linear regression
+summary(lm.time.cont)
+
+
+pes.summary.pts.int=metaprop(PTS_int,
+                             n_int,
+                             author,
+                             data=dat_int,
+                             sm="PLO",
+                             backtransf=T,
+                             method.ci="NAsm",
+                             method.tau="DL",
+                             incr=0,
+                             allincr=FALSE,
+                             addincr=FALSE,
+                             tau.common=FALSE,
+                             tau.preset=NULL,
+                             title="",)
+
+forest(pes.summary.pts.int,
+       xlim = c(0,50), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+
+pes.summary.pts.cont=metaprop(PTS_control,
+                             n_control,
+                             author,
+                             data=dat_int,
+                             sm="PLO",
+                             backtransf=T,
+                             method.ci="NAsm",
+                             method.tau="DL",
+                             incr=0,
+                             allincr=FALSE,
+                             addincr=FALSE,
+                             tau.common=FALSE,
+                             tau.preset=NULL,
+                             title="",)
+
+forest(pes.summary.pts.cont,
+       xlim = c(0,50), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+pes.summary.pts.modsev.int=metaprop(PTS_modsev_int,
+                             n_int,
+                             author,
+                             data=dat_int,
+                             sm="PLO",
+                             backtransf=T,
+                             method.ci="NAsm",
+                             method.tau="DL",
+                             incr=0,
+                             allincr=FALSE,
+                             addincr=FALSE,
+                             tau.common=FALSE,
+                             tau.preset=NULL,
+                             title="",)
+
+forest(pes.summary.pts.modsev.int,
+       xlim = c(0,50), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+ies.PTS=escalc(xi=PTS_modsev_int,ni=n_int,measure="PLO",data=dat_int) 
+m.reg.PTS.int=rma(yi,vi,data=ies.PTS,mods=~PTS_fu_length,method="DL")
+m.reg.PTS.int
+
+ies.PTS.control=escalc(xi=PTS_modsev_control,ni=n_control,measure="PLO",data=dat_int) 
+m.reg.PTS.cont=rma(yi,vi,data=ies.PTS.control,mods=~PTS_fu_length,method="DL")
+m.reg.PTS.cont
+
+
+lm.modsev.time.int = lm(PTS_modsev_int_rate~Time_int, data = dat.PTS.time) #Create the linear regression
+summary(lm.modsev.time.int)
+
+lm.modsev.time.cont = lm(PTS_modsev_cont_rate~Time_cont, data = dat.PTS.time) #Create the linear regression
+summary(lm.modsev.time.cont)
+
+ggplot() +
+  geom_point(data=dat.PTS.time, aes(x = Time_int, y = PTS_modsev_int_rate), colour="red")+
+  geom_point(data=dat.PTS.time, aes(x=Time_cont, y=PTS_modsev_cont_rate), colour="blue") +
+  geom_smooth(data=dat.PTS.time, aes(x = Time_int, y = PTS_modsev_int_rate), 
+              method = "lm", se = F,colour="red") +
+  geom_smooth(data=dat.PTS.time, aes(x=Time_cont, y=PTS_modsev_cont_rate),
+              method="lm", se = F,colour="blue") + 
+  labs(y= "Rate of Post-Thrombotic Syndrome (%)", x = "Time (Months)")
+
+
+pes.summary.pts.modsev.cont=metaprop(PTS_modsev_control,
+                                    n_control,
+                                    author,
+                                    data=dat_int,
+                                    sm="PLO",
+                                    backtransf=T,
+                                    method.ci="NAsm",
+                                    method.tau="DL",
+                                    incr=0,
+                                    allincr=FALSE,
+                                    addincr=FALSE,
+                                    tau.common=FALSE,
+                                    tau.preset=NULL,
+                                    title="",)
+
+forest(pes.summary.pts.modsev.cont,
+       xlim = c(0,50), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+
+pes.summary.majbleed.int=metaprop(bleeding_maj_int,
+                                    n_int,
+                                    studlab,
+                                    data=dat_int,
+                                    sm="PLO",
+                                    backtransf=T,
+                                    method.ci="NAsm",
+                                    method.tau="DL",
+                                    incr=0,
+                                    allincr=FALSE,
+                                    addincr=FALSE,
+                                    tau.common=FALSE,
+                                    tau.preset=NULL,
+                                    title="",)
+
+forest(pes.summary.majbleed.int,
+       xlim = c(0,10), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+###_________Pooled PTS rates in intervention at 6 months____________
+
+ies.PTS=escalc(xi=PTS_6,ni=n_int,measure="PR",data=dat_int) 
+pes.PTS=rma(yi,vi,data=ies.PTS,method="DL",weighted=TRUE)
+
+
+pes.summary.pts.int=metaprop(PTS_6,
+                             n_int,
+                             studlab,
+                             data=dat_int,
+                             sm="PLO",
+                             backtransf=T,
+                             method.ci="NAsm",
+                             method.tau="DL",
+                             incr=0,
+                             allincr=FALSE,
+                             addincr=FALSE,
+                             tau.common=FALSE,
+                             tau.preset=NULL,
+                             title="",)
+
+forest(pes.summary.pts.int,
+       xlim = c(0,50), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+pes.summary.pts.modsev.int=metaprop(PTS_modsev_6,
+                                    n_int,
+                                    author,
+                                    data=dat_int,
+                                    sm="PLO",
+                                    backtransf=T,
+                                    method.ci="NAsm",
+                                    method.tau="DL",
+                                    incr=0,
+                                    allincr=FALSE,
+                                    addincr=FALSE,
+                                    tau.common=FALSE,
+                                    tau.preset=NULL,
+                                    title="",)
+
+forest(pes.summary.pts.modsev.int,
+       xlim = c(0,20), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+pes.summary.majbleed.int=metaprop(bleeding_maj_int,
+                                  n_int,
+                                  author,
+                                  data=dat_int,
+                                  sm="PLO",
+                                  backtransf=T,
+                                  method.ci="NAsm",
+                                  method.tau="DL",
+                                  incr=0,
+                                  allincr=FALSE,
+                                  addincr=FALSE,
+                                  tau.common=FALSE,
+                                  tau.preset=NULL,
+                                  title="",)
+
+forest(pes.summary.majbleed.int,
+       xlim = c(0,10), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+#___________________CONTROL POPULATION______________________
+
+pes.summary.pts.control=metaprop(PTS_6_cont,
+                             n_control,
+                             author,
+                             data=dat_int,
+                             sm="PLO",
+                             backtransf=T,
+                             method.ci="NAsm",
+                             method.tau="DL",
+                             incr=0,
+                             allincr=FALSE,
+                             addincr=FALSE,
+                             tau.common=FALSE,
+                             tau.preset=NULL,
+                             title="",)
+
+forest(pes.summary.pts.control,
+       xlim = c(20,60), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+pes.summary.pts.modsev.control=metaprop(PTS_6_modsev_cont,
+                                    n_control,
+                                    author,
+                                    data=dat_int,
+                                    sm="PLO",
+                                    backtransf=T,
+                                    method.ci="NAsm",
+                                    method.tau="DL",
+                                    incr=0,
+                                    allincr=FALSE,
+                                    addincr=FALSE,
+                                    tau.common=FALSE,
+                                    tau.preset=NULL,
+                                    title="",)
+
+forest(pes.summary.pts.modsev.control,
+       xlim = c(0,50), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+pes.summary.majbleed.control=metaprop(bleeding_maj_control,
+                                  n_control,
+                                  author,
+                                  data=dat_int,
+                                  sm="PLO",
+                                  backtransf=T,
+                                  method.ci="NAsm",
+                                  method.tau="DL",
+                                  incr=0,
+                                  allincr=FALSE,
+                                  addincr=FALSE,
+                                  tau.common=FALSE,
+                                  tau.preset=NULL,
+                                  title="",)
+
+forest(pes.summary.majbleed.control,
+       xlim = c(0,5), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+funnel.rma(pes.30.mort.da,atransf=transf.ipft.hm,targ=list(ni=dat_low$n_mort),yaxis="sei",xlab="Proportion")
+
+
+#___________________ULCER__________________________
+pes.summary.ulcer=metaprop(PTS_ulcer_int,
+                                      n_int,
+                                      author,
+                                      data=dat_int,
+                                      sm="PLO",
+                                      backtransf=T,
+                                      method.ci="NAsm",
+                                      method.tau="DL",
+                                      incr=0,
+                                      allincr=FALSE,
+                                      addincr=FALSE,
+                                      tau.common=FALSE,
+                                      tau.preset=NULL,
+                                      title="",)
+
+forest(pes.summary.ulcer,
+       xlim = c(0,5), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+pes.summary.ulcer.control=metaprop(PTS_ulcer_control,
+                           n_control,
+                           author,
+                           data=dat_int,
+                           sm="PLO",
+                           backtransf=T,
+                           method.ci="NAsm",
+                           method.tau="DL",
+                           incr=0,
+                           allincr=FALSE,
+                           addincr=FALSE,
+                           tau.common=FALSE,
+                           tau.preset=NULL,
+                           title="",)
+
+forest(pes.summary.ulcer.control,
+       xlim = c(0,5), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+
+#___________________PTS SEVERE  _______________________
+
+pes.summary.severe=metaprop(PTS_sev_int,
+                           n_int,
+                           author,
+                           data=dat_int,
+                           sm="PLO",
+                           backtransf=T,
+                           method.ci="NAsm",
+                           method.tau="DL",
+                           incr=0,
+                           allincr=FALSE,
+                           addincr=FALSE,
+                           tau.common=FALSE,
+                           tau.preset=NULL,
+                           title="",)
+forest(pes.summary.severe,
+       xlim = c(0,20), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+pes.summary.severe.control=metaprop(PTS_sev_control,
+                                   n_control,
+                                   author,
+                                   data=dat_int,
+                                   sm="PLO",
+                                   backtransf=T,
+                                   method.ci="NAsm",
+                                   method.tau="DL",
+                                   incr=0,
+                                   allincr=FALSE,
+                                   addincr=FALSE,
+                                   tau.common=FALSE,
+                                   tau.preset=NULL,
+                                   title="",)
+
+forest(pes.summary.severe.control,
+       xlim = c(0,20), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+#_____________________peri-op re-thrombosis
+
+pes.peri.op.rethrombosis=metaprop(peri_op_rethrombosis,
+                            n_int,
+                            author,
+                            data=dat_int,
+                            sm="PLO",
+                            backtransf=T,
+                            method.ci="NAsm",
+                            method.tau="DL",
+                            incr=0,
+                            allincr=FALSE,
+                            addincr=FALSE,
+                            tau.common=FALSE,
+                            tau.preset=NULL,
+                            title="",)
+forest(pes.peri.op.rethrombosis,
+       xlim = c(0,20), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+#_____________________________Recurrent thrombosis
+pes.rethrombosis.int=metaprop(rethrombosis_int,
+                            n_int,
+                            author,
+                            data=dat_int,
+                            sm="PLO",
+                            backtransf=T,
+                            method.ci="NAsm",
+                            method.tau="DL",
+                            incr=0,
+                            allincr=FALSE,
+                            addincr=FALSE,
+                            tau.common=FALSE,
+                            tau.preset=NULL,
+                            title="",)
+forest(pes.rethrombosis.int,
+       xlim = c(0,20), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+
+pes.rethrombosis.control=metaprop(rethrombosis_control,
+                                    n_control,
+                                    author,
+                                    data=dat_int,
+                                    sm="PLO",
+                                    backtransf=T,
+                                    method.ci="NAsm",
+                                    method.tau="DL",
+                                    incr=0,
+                                    allincr=FALSE,
+                                    addincr=FALSE,
+                                    tau.common=FALSE,
+                                    tau.preset=NULL,
+                                    title="",)
+
+forest(pes.rethrombosis.control,
+       xlim = c(0,20), pscale =100, 
+       squaresize = 0.5, col.square="navy", col.square.lines="navy",
+       col.diamond="maroon", col.diamond.lines="maroon",)
+
+#__________________PATENCY_________________________
+
+na.omit.df <- dat_int %>% select( studlab, n_angioplasty, n_stent, n, n_int)
+na.omit.df %>% mutate(plasty=na.(n_angioplasty)/n)
+df <- na.exclude(na.omit.df)
+df
+
+
+
+
+#____________________META-REGRESSION OF PTS OVER TIME____________________
+
+dat_PTS_time <- import("~/Desktop/PTS_6.csv")
+
+dat_PTS_time %>%
+  mutate(PTS=PTS_int/n_int)
+
+dat_PTS_time %>%
+  mutate(weights=1/sqrt(n))
+
+
+# Specify basic plot, mapping sex to the x-axis, effect size 'd' to the y-axis,
+# and 'weights' to the weight parameter.
+
+ies.PTS.6=escalc(xi=PTS_int,ni=n_int,measure="PR",data=dat_PTS_time) 
+pes.PTS.6=rma(yi,vi,data=ies.PTS.6,method="DL",weighted=TRUE)
+print(pes.PTS.6,digits=6);confint(pes.PTS.6)
+
+pes.PTS.6=rma(yi,vi,data=ies.PTS.6,mods=~Time_int,method="DL")
+print(pes.PTS.6,digits=6);confint(pes.PTS.6)
+
+m_reg=rma(yi,vi,data=ies.PTS.6,mods=~Time_int,method="DL")
+m_reg
+m_reg$b[1] #intercept
+m_reg$b[2] #slope
+
+ies.PTS.6.control=escalc(xi=PTS_cont,ni=n_cont,measure="PR",data=dat_PTS_time) 
+pes.PTS.6=rma(yi,vi,data=ies.PTS.6.control,method="DL",weighted=TRUE)
+print(pes.PTS.6,digits=6);confint(pes.PTS.6)
+m_reg_control=rma(yi,vi,data=ies.PTS.6.control,mods=~Time_cont,method="DL")
+m_reg_control
+m_reg_control$b[1]
+m_reg_control$b[2]
+
+m_reg$b[1] #intercept
+m_reg$b[2] #slope
+ggplot() + 
+  geom_point(data=dat_PTS_time, aes(x = Time_int, y = PTS_rate, colour="red")) + 
+                        geom_abline(intercept = m_reg$b[1], 
+                                    slope = m_reg$b[2], colour="blue") + 
+  geom_point(data=dat_PTS_time, aes(x = Time_cont, y = PTS_rate2,colour="blue")) +
+  geom_abline(intercept = m_reg_control$b[1], 
+              slope = m_reg_control$b[2], colour="red")
+                        
+
+#_________________PUBLICATION BIASS FOR THE PRIMARY OUTCOMES
+
+                       
+# Clear environment
+rm(list = ls()) 
+
+# Clear packages
+p_unload(all)  # Remove all add-ons
+
+# Clear plots
+dev.off()  # But only if there IS a plot
+
+# Clear console
+cat("\014")  # ctrl+L
+
+# Clear mind :)
